@@ -1,5 +1,7 @@
 #  Copyright (c) 2021. 楊鵬. All Rights Reserved.
 
+from datetime import datetime
+
 # 処理ファイル名
 FROM_FILE = "testADB_touchMesocket1_log_2020.05.07.txt"
 # 抽出したいデータの設備名
@@ -20,7 +22,7 @@ VALUE_FROM = 71
 VALUE_TO = 79
 # 被験者ID
 USER_COLUMN_NAME = '被験者番号'
-USER_ID = '1'
+USER_ID = None  # 変更なら文字列で
 # ミリ秒値の位置
 TIMESTAMP_FROM = 1
 TIMESTAMP_TO = 16
@@ -28,8 +30,6 @@ TIMESTAMP_TO = 16
 COLUMNS = [
     {
         'name': USER_COLUMN_NAME,    # 固定
-        # todo 出力ファイルが有る場合、既存ユーザーIDを取得して、こちら＋１で設定（既存ファイルと連動）
-        'value': USER_ID,   # 固定
     },
     {
         'name': 'ミリ秒(n)',
@@ -63,15 +63,15 @@ COLUMNS = [
     # }
 ]
 # 出力ファイル名
-TO_FILE = 'result.txt'
+TO_FILE = 'result.csv'
 
 
-def update_user_id():
-    a = 0
-    # todo 出力ファイル名でファイルを検索
-    # ファイルがない　and　USERIDはNONE　=>　USERID = 1
-    # USERID　！=　NONE　=>　設定済USERIDで
-    # ファイルが有る　=>　USERID += 1
+def update_user_id(user_id):
+    if user_id == None:
+        user_id = '1'
+    elif type(user_id) is int:
+        user_id = str(user_id)
+    return user_id
 
 
 # 処理ファイルから補充済データ、項目名を取得
@@ -85,7 +85,7 @@ def create_data_from_file():
                 data_json['TIME'].append(str.strip(row[TIMESTAMP_FROM:TIMESTAMP_TO]))
                 key = str.strip(row[KEY_FROM:KEY_TO])
                 # 生データに項目名及び順番を取得
-                if not key in keys:
+                if not (key in keys):
                     keys.append(key)
 
                 # 省略データがある場合
@@ -124,9 +124,9 @@ def data_convert(data_json, keys):
     for i in range(event_count_all):
         event_count_in_row += 1
         for col in COLUMNS:
-            if col['name'] == USER_COLUMN_NAME:
-                row_data.append(col['value'])
-            else:
+            if col['name'] == USER_COLUMN_NAME and data_json[EVENT_NAME][i].find(EVENT_VALUE_TO) != -1:
+                row_data.insert(0, USER_ID)
+            elif col['name'] != USER_COLUMN_NAME:
                 row_data.append(data_json[col['bind_name']][i])
         # イベントがUPの場合
         if data_json[EVENT_NAME][i].find(EVENT_VALUE_TO) != -1:
@@ -152,14 +152,16 @@ def data_convert(data_json, keys):
 
 
 def create_file_from_data(data):
-    with open(TO_FILE, 'a', encoding='utf-8') as f:
+    now = datetime.now()
+    [name, extension] = TO_FILE.split('.')
+    file_name = name + now.strftime('%Y%m%d%H%M%S%f') + '.' + extension
+    with open(file_name, 'w', encoding='utf-8') as f:
         f.writelines(data)
 
 
 if __name__ == '__main__':
-    # todo 被験者番号を更新
-    # USER_ID = update_user_id()
-
+    # 被験者番号を更新
+    USER_ID = update_user_id(USER_ID)
     # 処理ファイルを読み込み
     [data_json, keys] = create_data_from_file()
     # データ処理、転置
