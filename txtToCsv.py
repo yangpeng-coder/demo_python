@@ -1,23 +1,41 @@
-# import json
-# 生データのファイル名
+#  Copyright (c) 2021. 楊鵬. All Rights Reserved.
+
+# 処理ファイル名
 FROM_FILE = "testADB_touchMesocket1_log_2020.05.07.txt"
-# 処理済ファイル名と列目
-TO_FILE = 'result.txt'
+# 抽出したいデータの設備名
+DEVICE_CODE = '/dev/input/event4'
+# 処理ファイルに項目名のindex
+KEY_FROM = 50
+KEY_TO = 68
+# タッチイベントの項目名
+EVENT_NAME = 'BTN_TOUCH'
+# イベントの情報
+EVENT_VALUE_FROM = 'DOWN'
+EVENT_VALUE_TO = 'UP'
+# イベント終了項目名
+EVENT_STOP_FLAG = 'SYN_REPORT'
+
+# 抽出したいデータのindex
 VALUE_FROM = 71
 VALUE_TO = 79
+# 被験者ID
+USER_COLUMN_NAME = '被験者番号'
+USER_ID = '1'
+# ミリ秒値の位置
+TIMESTAMP_FROM = 1
+TIMESTAMP_TO = 16
+# 出力列項目
 COLUMNS = [
-    # {
-    #     'name': '被験者番号',
-    #     'bind_name': None,
-    #     'from': None,
-    #     'to': None,
-    #     'value': 1,
-    # },
+    {
+        'name': USER_COLUMN_NAME,    # 固定
+        # todo 出力ファイルが有る場合、既存ユーザーIDを取得して、こちら＋１で設定（既存ファイルと連動）
+        'value': USER_ID,   # 固定
+    },
     {
         'name': 'ミリ秒(n)',
-        'bind_name': 'TIME',    # 固定
-        'from': 1,
-        'to': 16,
+        'bind_name': 'TIME',  # 固定
+        'from': TIMESTAMP_FROM,
+        'to': TIMESTAMP_TO,
     },
     {
         'name': 'x軸(n)',
@@ -44,84 +62,107 @@ COLUMNS = [
     #     'to': VALUE_TO,
     # }
 ]
-
-# 抽出したいデータの設備名
-DEVICE_CODE = '/dev/input/event4'
-# 生データに行の並び順番
-KEYS = ('ABS_MT_TRACKING_ID', 'BTN_TOUCH', 'ABS_MT_POSITION_X', 'ABS_MT_POSITION_Y', 'ABS_MT_PRESSURE', 'SYN_REPORT')
-KEY_FROM = 50
-KEY_TO = 68
-# イベントの項目名
-EVENT_NAME = 'BTN_TOUCH'
-# イベントの情報
-EVENT_VALUE_FROM = 'DOWN'
-EVENT_VALUE_TO = 'UP'
-# 被験者ID
-USER_ID = '1'
+# 出力ファイル名
+TO_FILE = 'result.txt'
 
 
-def parse_data():
-    max = 0
-    with open(FROM_FILE, 'r', encoding='utf-8') as f:
-        data = f.readlines()
+def update_user_id():
+    a = 0
+    # todo 出力ファイル名でファイルを検索
+    # ファイルがない　and　USERIDはNONE　=>　USERID = 1
+    # USERID　！=　NONE　=>　設定済USERIDで
+    # ファイルが有る　=>　USERID += 1
 
-    result_data = []
+
+# 処理ファイルから補充済データ、項目名を取得
+def create_data_from_file():
     data_json = {'TIME': []}
+    keys = []
     i = 0
-    # データ補充
-    for row in data:
-        if row.find(DEVICE_CODE) != -1 and row.find('add device') == -1:
-            data_json['TIME'].append(row[1: 16])
-            action = row[KEY_FROM:KEY_TO]
-            # 省略データがある場合
-            while action.find(KEYS[i]) < 0 and i < len(KEYS):
-                # 前回のデータを配列に入れる
-                data_json[KEYS[i]].append(data_json[KEYS[i]][-1])
-                i += 1
+    with open(FROM_FILE, 'r', encoding='utf-8') as f:
+        for row in f.readlines():
+            if row.find(DEVICE_CODE) > -1 and row.find('add device') == -1:
+                data_json['TIME'].append(str.strip(row[TIMESTAMP_FROM:TIMESTAMP_TO]))
+                key = str.strip(row[KEY_FROM:KEY_TO])
+                # 生データに項目名及び順番を取得
+                if not key in keys:
+                    keys.append(key)
 
-            if action.find(KEYS[i]) >= 0:
-                if KEYS[i] in data_json:
-                    data_json[KEYS[i]].append(row[VALUE_FROM:VALUE_TO])
-                else:
-                    data_json[KEYS[i]] = [row[VALUE_FROM:VALUE_TO]]
-                i += 1
+                # 省略データがある場合
+                while key.find(keys[i]) < 0 and i < len(keys):
+                    # 前回のデータを配列に入れる
+                    data_json[keys[i]].append(data_json[keys[i]][-1])
+                    i += 1
 
-            if i == len(KEYS):
-                i = 0
-    # print(json.dumps(data_json, indent=4))
+                if key.find(keys[i]) > -1:
+                    value = row[VALUE_FROM:VALUE_TO]
+                    # 16進数 -> 10進数
+                    if key != EVENT_NAME:
+                        value = int(value, 16)
 
-    tmp = 0
-    event_count = len(data_json[EVENT_NAME])
-    out_row_data = [USER_ID]
-    for j in range(event_count):
-        tmp += 1
+                    if keys[i] in data_json:
+                        data_json[key].append(str(value))
+                    else:
+                        data_json[key] = [str(value)]
+                    i += 1
+
+                if i == len(keys) and key == EVENT_STOP_FLAG:
+                    i = 0
+    return [data_json, keys]
+
+
+# データ転置
+def data_convert(data_json, keys):
+    # 一行に最大イベント数
+    max_event_count_in_row = 0
+    event_count_in_row = 0
+    event_count_all = len(data_json[EVENT_NAME])
+    # 出力行データ
+    result_data = []
+    # 行データ
+    row_data = []
+    for i in range(event_count_all):
+        event_count_in_row += 1
         for col in COLUMNS:
-            out_row_data.append(data_json[col['bind_name']][j])
-
+            if col['name'] == USER_COLUMN_NAME:
+                row_data.append(col['value'])
+            else:
+                row_data.append(data_json[col['bind_name']][i])
         # イベントがUPの場合
-        # print(out_row_data)
-        if data_json[EVENT_NAME][j].find(EVENT_VALUE_TO) != -1:
-            result_data.append(','.join(out_row_data) + '\n')
-            out_row_data = [USER_ID]
-            if tmp > max:
-                max = tmp
+        if data_json[EVENT_NAME][i].find(EVENT_VALUE_TO) != -1:
+            result_data.append(','.join(row_data) + '\n')
+            # 行データをリセット
+            row_data = []
+            if event_count_in_row > max_event_count_in_row:
+                max_event_count_in_row = event_count_in_row
+            # カウントをリセット
+            event_count_in_row = 0
 
-            tmp = 0
-
-    # ヘッダ作成
-    print(max)
-    heads = ['被験者番号']
-    for k in range(max):
+    # 出力ヘッダを作成
+    result_header = []
+    header = []
+    for j in range(max_event_count_in_row):
         for col in COLUMNS:
-            heads.append(col['name'].replace('n', str(k + 1)))
-            
-    result_head = ','.join(heads) + '\n'
+            if col['name'] == USER_COLUMN_NAME and j == 0:
+                header.append(USER_COLUMN_NAME)
+            else:
+                header.append(col['name'].replace('n', str(j + 1)))
+    result_header.append(','.join(header) + '\n')
+    return result_header + result_data
 
+
+def create_file_from_data(data):
     with open(TO_FILE, 'a', encoding='utf-8') as f:
-        # ヘッダ
-        f.writelines(result_head)
-        f.writelines(result_data)
+        f.writelines(data)
 
 
 if __name__ == '__main__':
-    parse_data()
+    # todo 被験者番号を更新
+    # USER_ID = update_user_id()
+
+    # 処理ファイルを読み込み
+    [data_json, keys] = create_data_from_file()
+    # データ処理、転置
+    convert_data = data_convert(data_json, keys)
+    # ファイルを出力
+    create_file_from_data(convert_data)
