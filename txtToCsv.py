@@ -3,7 +3,7 @@
 from datetime import datetime
 
 # 処理ファイル名
-FROM_FILE = "testADB_touchMesocket1_log_2020.05.07.txt"
+FROM_FILE = 'testADB_touchMesocket1_log_2020.05.07.txt'
 # 抽出したいデータの設備名
 DEVICE_CODE = '/dev/input/event4'
 # 処理ファイルに項目名のindex
@@ -145,7 +145,7 @@ def data_convert(data_json, keys):
         for col in COLUMNS:
             if col['name'] == USER_COLUMN_NAME and j == 0:
                 header.append(USER_COLUMN_NAME)
-            else:
+            elif col['name'] != USER_COLUMN_NAME:
                 header.append(col['name'].replace('n', str(j + 1)))
     result_header.append(','.join(header) + '\n')
     return result_header + result_data
