@@ -1,9 +1,9 @@
 #  Copyright (c) 2021. 楊鵬. All Rights Reserved.
 
 from datetime import datetime
+import sys
+import getopt
 
-# 処理ファイル名
-FROM_FILE = 'testADB_touchMesocket1_log_2020.05.07.txt'
 # 抽出したいデータの設備名
 DEVICE_CODE = '/dev/input/event4'
 # 処理ファイルに項目名のindex
@@ -29,7 +29,7 @@ TIMESTAMP_TO = 16
 # 出力列項目
 COLUMNS = [
     {
-        'name': USER_COLUMN_NAME,    # 固定
+        'name': USER_COLUMN_NAME,  # 固定
     },
     {
         'name': 'ミリ秒(n)',
@@ -62,8 +62,28 @@ COLUMNS = [
     #     'to': VALUE_TO,
     # }
 ]
-# 出力ファイル名
-TO_FILE = 'result.csv'
+
+
+def get_options(argv):
+    input_file = ''
+    output_file = ''
+    try:
+        opts, args = getopt.getopt(argv, 'hi:o:', ['input_file=', 'output_file='])
+    except getopt.GetoptError:
+        print('test.py -i <inputfile> -o <outputfile>')
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt == '-h':
+            print('test.py -i <inputfile> -o <outputfile>')
+            sys.exit()
+        elif opt in ('-i', '--input_file'):
+            input_file = arg
+        elif opt in ('-o', '--output_file'):
+            output_file = arg
+    if input_file == '' or output_file == '':
+        print('test.py -i <inputfile> -o <outputfile>')
+        sys.exit()
+    return [input_file, output_file]
 
 
 def update_user_id(user_id):
@@ -75,11 +95,11 @@ def update_user_id(user_id):
 
 
 # 処理ファイルから補充済データ、項目名を取得
-def create_data_from_file():
+def create_data_from_file(file):
     data_json = {'TIME': []}
     keys = []
     i = 0
-    with open(FROM_FILE, 'r', encoding='utf-8') as f:
+    with open(file, 'r', encoding='utf-8') as f:
         for row in f.readlines():
             if row.find(DEVICE_CODE) > -1 and row.find('add device') == -1:
                 data_json['TIME'].append(str.strip(row[TIMESTAMP_FROM:TIMESTAMP_TO]))
@@ -151,20 +171,23 @@ def data_convert(data_json, keys):
     return result_header + result_data
 
 
-def create_file_from_data(data):
+def create_file_from_data(data, file):
     now = datetime.now()
-    [name, extension] = TO_FILE.split('.')
+    [name, extension] = file.split('.')
     file_name = name + now.strftime('%Y%m%d%H%M%S%f') + '.' + extension
     with open(file_name, 'w', encoding='utf-8') as f:
         f.writelines(data)
 
 
 if __name__ == '__main__':
+    # コマンドのオプションを取得
+    [input_file, output_file] = get_options(sys.argv[1:])
+    print(input_file, output_file)
     # 被験者番号を更新
     USER_ID = update_user_id(USER_ID)
     # 処理ファイルを読み込み
-    [data_json, keys] = create_data_from_file()
+    [data_json, keys] = create_data_from_file(input_file)
     # データ処理、転置
     convert_data = data_convert(data_json, keys)
     # ファイルを出力
-    create_file_from_data(convert_data)
+    create_file_from_data(convert_data, output_file)
