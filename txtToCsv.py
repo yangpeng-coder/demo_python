@@ -182,7 +182,6 @@ def create_file_from_data(data, file):
 if __name__ == '__main__':
     # コマンドのオプションを取得
     [input_file, output_file] = get_options(sys.argv[1:])
-    print(input_file, output_file)
     # 被験者番号を更新
     USER_ID = update_user_id(USER_ID)
     # 処理ファイルを読み込み
