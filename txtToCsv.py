@@ -70,14 +70,14 @@ def get_options(argv):
     user_id = ''
     try:
         opts, args = getopt.getopt(argv, 'hi:o:d:u:', ['input_file=', 'output_file=', 'device_code=', 'user_id'])
-    except getopt.GetoptError or len(opts) != 4:
+        # パラメータが4個ではない場合、エラーを投げる
+        if len(opts) != 4:
+            raise Exception
+    except Exception:
         print('test.py -i <inputfile> -o <outputfile> -d <device_code> -u <user_id>')
         sys.exit(2)
     for opt, arg in opts:
-        if opt == '-h':
-            print('test.py -i <inputfile> -o <outputfile>')
-            sys.exit()
-        elif opt in ('-i', '--input_file'):
+        if opt in ('-i', '--input_file'):
             input_file = arg
         elif opt in ('-o', '--output_file'):
             output_file = arg
@@ -86,7 +86,7 @@ def get_options(argv):
         elif opt in ('-u', '--user_id'):
             user_id = arg
     if input_file == '' or output_file == '' or device_code == '' or user_id == '':
-        print('test.py -i <inputfile> -o <outputfile>')
+        print('test.py -i <inputfile> -o <outputfile> -d <device_code> -u <user_id>')
         sys.exit()
 
     return [input_file, output_file, device_code, user_id]
