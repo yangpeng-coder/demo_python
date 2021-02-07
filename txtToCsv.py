@@ -171,7 +171,7 @@ def data_convert(data_json, keys, user_id):
         for col in COLUMNS:
             if col['name'] == USER_COLUMN_NAME and data_json[EVENT_NAME][i].find(EVENT_VALUE_TO) != -1:
                 row_data.insert(0, user_id)
-            elif col['name'] != USER_COLUMN_NAME and col['bind_name'] in keys:
+            elif col['name'] != USER_COLUMN_NAME and (col['bind_name'] in keys or col['bind_name'] == 'TIME'):
                 row_data.append(data_json[col['bind_name']][i])
         # イベントがUPの場合
         if data_json[EVENT_NAME][i].find(EVENT_VALUE_TO) != -1:
@@ -190,7 +190,7 @@ def data_convert(data_json, keys, user_id):
         for col in COLUMNS:
             if col['name'] == USER_COLUMN_NAME and j == 0:
                 header.append(USER_COLUMN_NAME)
-            elif col['name'] != USER_COLUMN_NAME and col['bind_name'] in keys:
+            elif col['name'] != USER_COLUMN_NAME and (col['bind_name'] in keys or col['bind_name'] == 'TIME'):
                 header.append(col['name'].replace('n', str(j + 1)))
     result_header.append(','.join(header) + '\n')
     return result_header + result_data
