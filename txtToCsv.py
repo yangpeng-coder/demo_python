@@ -5,7 +5,7 @@ import sys
 import getopt
 
 # キーワード
-KEYWORD_LIST = ['huawei', 'pixcel4a']
+KEYWORD_LIST = ['huawei', 'pixel4a']
 # 処理ファイルに項目名のindex
 KEY_FROM = 50
 KEY_TO = 68
@@ -106,8 +106,8 @@ def create_data_from_file(file_name, keyword, device_code):
         for row in f.readlines():
             if row.find(device_code) > -1 and row.find('add device') == -1:
                 key = str.strip(row[KEY_FROM:KEY_TO])
-                # pixcel4aの特別のデータを集めないように
-                if keyword == 'pixcel4a':
+                # pixel4aの特別のデータを集めないように
+                if keyword == 'pixel4a':
                     if (key == 'ABS_MT_PRESSURE' and row[VALUE_FROM:VALUE_TO] == '00000000') or (
                             key == 'ABS_MT_TRACKING_ID' and row[VALUE_FROM:VALUE_TO] == 'ffffffff'):
                         continue
