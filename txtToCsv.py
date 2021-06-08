@@ -5,7 +5,7 @@ import sys
 import getopt
 
 # キーワード
-KEYWORD_LIST = ['huawei', 'pixcel4a']
+KEYWORD_LIST = ['huawei', 'pixel4a']
 # 処理ファイルに項目名のindex
 KEY_FROM = 50
 KEY_TO = 68
@@ -97,8 +97,9 @@ def create_data_from_file(file_name, keyword, device_code):
     data_json = {'TIME': []}
     keys = []
     i = 0
+    index = KEYWORD_LIST.index(keyword);
 
-    if keyword == '':
+    if index == -1:
         print('can not found keyword from file name...')
         sys.exit()
 
@@ -106,8 +107,8 @@ def create_data_from_file(file_name, keyword, device_code):
         for row in f.readlines():
             if row.find(device_code) > -1 and row.find('add device') == -1:
                 key = str.strip(row[KEY_FROM:KEY_TO])
-                # pixcel4aの特別のデータを集めないように
-                if keyword == 'pixcel4a':
+                # pixel4aの特別のデータを集めないように
+                if index == 1:
                     if (key == 'ABS_MT_PRESSURE' and row[VALUE_FROM:VALUE_TO] == '00000000') or (
                             key == 'ABS_MT_TRACKING_ID' and row[VALUE_FROM:VALUE_TO] == 'ffffffff'):
                         continue
@@ -166,6 +167,8 @@ def data_convert(data_json, keys, user_id):
     result_data = []
     # 行データ
     row_data = []
+    rows = []
+    max_len = 0;
     for i in range(event_count_all):
         event_count_in_row += 1
         for col in COLUMNS:
@@ -175,13 +178,20 @@ def data_convert(data_json, keys, user_id):
                 row_data.append(data_json[col['bind_name']][i])
         # イベントがUPの場合
         if data_json[EVENT_NAME][i].find(EVENT_VALUE_TO) != -1:
-            result_data.append(','.join(row_data) + '\n')
-            # 行データをリセット
-            row_data = []
+            rows.append(row_data)
             if event_count_in_row > max_event_count_in_row:
                 max_event_count_in_row = event_count_in_row
+                max_len = len(row_data)
             # カウントをリセット
             event_count_in_row = 0
+            # 行データをリセット
+            row_data = []
+
+    # result_dataの長さを統一する（0を埋め込む）
+    for row in rows:
+        if len(row) < max_len:
+            row.extend(['0'] * (max_len - len(row)))
+        result_data.append(','.join(row) + '\n')
 
     # 出力ヘッダを作成
     result_header = []
