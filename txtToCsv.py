@@ -1,4 +1,5 @@
-#  Copyright (c) 2021. 楊鵬. All Rights Reserved.
+#!/usr/bin/env python3
+#  Copyright (c) 2023. 楊鵬. All Rights Reserved.
 
 from datetime import datetime
 import sys
@@ -97,7 +98,7 @@ def create_data_from_file(file_name, keyword, device_code):
     data_json = {'TIME': []}
     keys = []
     i = 0
-    index = KEYWORD_LIST.index(keyword);
+    index = KEYWORD_LIST.index(keyword)
 
     if index == -1:
         print('can not found keyword from file name...')
@@ -112,7 +113,7 @@ def create_data_from_file(file_name, keyword, device_code):
                     if (key == 'ABS_MT_PRESSURE' and row[VALUE_FROM:VALUE_TO] == '00000000') or (
                             key == 'ABS_MT_TRACKING_ID' and row[VALUE_FROM:VALUE_TO] == 'ffffffff'):
                         continue
-                data_json['TIME'].append(str.strip(row[TIMESTAMP_FROM:TIMESTAMP_TO]))
+
                 # 生データに項目名及び順番を取得
                 if not (key in keys):
                     keys.append(key)
@@ -141,6 +142,7 @@ def create_data_from_file(file_name, keyword, device_code):
                     i += 1
 
                 if i == len(keys) and key == EVENT_STOP_FLAG:
+                    data_json['TIME'].append(str.strip(row[TIMESTAMP_FROM:TIMESTAMP_TO]))
                     i = 0
     if len(keys) == 0:
         print('device_code:', device_code, 'is missed...')
@@ -168,7 +170,7 @@ def data_convert(data_json, keys, user_id):
     # 行データ
     row_data = []
     rows = []
-    max_len = 0;
+    max_len = 0
     for i in range(event_count_all):
         event_count_in_row += 1
         for col in COLUMNS:
